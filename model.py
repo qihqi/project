@@ -61,3 +61,24 @@ class DecoderRNN(nn.Module):
             inputs = self.embed(predicted)
         sampled_ids = torch.cat(sampled_ids, 1)                  # (batch_size, 20)
         return sampled_ids.squeeze()
+
+
+class EncoderRNN(nn.Module):
+
+    def __init__(self, embed_size, hidden_size, vocab_size, num_layers):
+        """Set the hyper-parameters and build the layers."""
+        super(EncoderRNN, self).__init__()
+        self.embed = nn.Embedding(vocab_size, embed_size)
+        self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+        self.init_weights()
+
+    def init_weights(self):
+        """Initialize weights."""
+        self.embed.weight.data.uniform_(-0.1, 0.1)
+
+    def forward(self, sentence, lengths):
+        embedded = self.embed(sentence)
+        packed = pack_padded_sequence(embedded, lengths, batch_first=True)
+        output, (hidden, cell) = self.lstm(packed)
+        return hidden[0]
+
