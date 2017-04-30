@@ -19,7 +19,7 @@ hidden_size = 512
 num_layers_rnn = 1
 image_data_file = './image_data.pickle'
 image_feature_file = './img_features.mat'
-vocab_path = './data/vocab2.pkl'
+vocab_path = './vocab2.pkl'
 
 def make_mini_batch(image_features, image_data, batch_size=32, use_caption=None):
     image_source = image_data.items()

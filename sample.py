@@ -1,14 +1,41 @@
 import torch
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np 
 import argparse
 import pickle 
 import os
 from torch.autograd import Variable 
-from torchvision import transforms 
+from torch import nn
+from torchvision import transforms, models
 from build_vocab import Vocabulary
 from model import EncoderCNN, DecoderRNN
 from PIL import Image
+
+class AlexNet2(nn.Module):
+
+    def __init__(self, alexnet):
+        super(AlexNet2, self).__init__()
+
+        self.features = alexnet.features
+
+        other_layer = list(alexnet.classifier.children())
+        (self.d1, self.fc6, self.relu1,
+         self.d2, self.fc7, self.relu2, self.fc8) = other_layer
+        self.fc7_value = None
+        self.fc6_value = None
+
+    def forward(self, x):
+        content = self.features(x)
+
+        content = content.view(content.size(0), 256 * 6 * 6)
+        contentn = self.d1(content)
+        self.fc6_value = self.fc6(content)
+        self.fc6_value = self.relu1(self.fc6_value)
+        content = self.d2(self.fc6_value)
+        self.fc7_value = self.fc7(content)
+        self.fc7_value = self.relu2(self.fc7_value)
+        content = self.fc8(self.fc7_value)
+        return content
 
 
 def main(args):
@@ -23,8 +50,10 @@ def main(args):
     with open(args.vocab_path, 'rb') as f:
         vocab = pickle.load(f)
 
+    alexnet = models.alexnet(pretrained=True)
+    alexnet2 = AlexNet2(alexnet)
     # Build Models
-    encoder = EncoderCNN(args.embed_size)
+    encoder = EncoderCNN(4096, args.embed_size)
     encoder.eval()  # evaluation mode (BN uses moving mean/variance)
     decoder = DecoderRNN(args.embed_size, args.hidden_size, 
                          len(vocab), args.num_layers)
@@ -46,11 +75,13 @@ def main(args):
     if torch.cuda.is_available():
         encoder.cuda()
         decoder.cuda()
+        alexnet2.cuda()
         state = [s.cuda() for s in state]
         image_tensor = image_tensor.cuda()
     
     # Generate caption from image
-    feature = encoder(image_tensor)
+    alexnet2(image_tensor)
+    feature = encoder(alexnet2.fc7_value)
     sampled_ids = decoder.sample(feature, state)
     sampled_ids = sampled_ids.cpu().data.numpy()
     
@@ -65,7 +96,7 @@ def main(args):
     
     # Print out image and generated caption.
     print (sentence)
-    plt.imshow(np.asarray(image))
+#    plt.imshow(np.asarray(image))
     
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
