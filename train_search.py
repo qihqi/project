@@ -19,7 +19,7 @@ hidden_size = 512
 num_layers_rnn = 1
 image_data_file = './image_data.pickle'
 image_feature_file = './img_features.mat'
-vocab_path = './data/vocab2.pkl'
+vocab_path = './vocab2.pkl'
 
 def make_mini_batch(image_features, image_data, batch_size=32, use_caption=None):
     image_source = image_data.items()
@@ -77,15 +77,21 @@ def main():
         vocab = pickle.load(f)
 
     encoder = EncoderCNN(4096, embed_dim)
+    encoder.load_state_dict(torch.load('searchimage.pkl'))
+    for p in encoder.parameters():
+        p.requires_grad = False
+
+
     word_encoder = EncoderRNN(embed_dim, embed_dim,
                          len(vocab), num_layers_rnn)
+    word_encoder.load_state_dict(torch.load('searchword.pkl'))
     if torch.cuda.is_available():
         encoder.cuda()
         word_encoder.cuda()
     # Loss and Optimizer
     criterion = nn.MSELoss()
-    params = list(word_encoder.parameters()) + list(encoder.linear.parameters())
-    optimizer = torch.optim.Adam(params, lr=0.001)
+    params = list(word_encoder.parameters()) # + list(encoder.linear.parameters())
+    optimizer = torch.optim.Adam(params, lr=2e-6, weight_decay=0.001)
 
     #load data
     with open(image_data_file) as f:
@@ -101,6 +107,7 @@ def main():
     for i in range(10): # epoch
         use_caption = i % 5
         print 'Epoch', i
+        losses = []
         for x, y in make_mini_batch(img_features, image_data,
                                     use_caption=use_caption):
             encoder.zero_grad()
@@ -116,13 +123,14 @@ def main():
             loss = torch.mean((features - outputs).pow(2))
             loss.backward()
             optimizer.step()
-
+            losses.append(loss.data[0])
             if iteration % 100 == 0:
-                print 'loss', loss.data[0]
+                print 'loss', sum(losses) / float(len(losses)) 
+                losses = []
 
             iteration += 1
 
-        torch.save(decoder.state_dict(), 'searchword.pkl' )
+        torch.save(word_encoder.state_dict(), 'searchword.pkl' )
         torch.save(encoder.state_dict(), 'searchimage.pkl' )
 
 

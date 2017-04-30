@@ -70,11 +70,14 @@ class EncoderRNN(nn.Module):
         super(EncoderRNN, self).__init__()
         self.embed = nn.Embedding(vocab_size, embed_size)
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True)
+        # self.linear = nn.Linear(hidden_size, hidden_size)
         self.init_weights()
 
     def init_weights(self):
         """Initialize weights."""
         self.embed.weight.data.uniform_(-0.1, 0.1)
+#        self.linear.weight.data.uniform_(-0.1, 0.1)
+#        self.linear.bias.data.fill_(0)
 
     def forward(self, sentence, lengths):
         embedded = self.embed(sentence)

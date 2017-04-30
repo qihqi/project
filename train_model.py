@@ -14,9 +14,9 @@ from torch.autograd import Variable
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision import transforms
 
-embed_dim = 256
-hidden_size = 512
-num_layers_rnn = 1
+embed_dim = 1000
+hidden_size = 1000
+num_layers_rnn = 2
 image_data_file = './image_data.pickle'
 image_feature_file = './img_features.mat'
 vocab_path = './vocab2.pkl'
@@ -97,7 +97,7 @@ def main():
 
     print 'here'
     iteration = 0
-
+    save_loss = []
     for i in range(10): # epoch
         use_caption = i % 5
         print 'Epoch', i
@@ -121,11 +121,14 @@ def main():
 
             if iteration % 100 == 0:
                 print 'loss', loss.data[0]
+                save_loss.append(loss.data[0]) 
 
             iteration += 1
 
         torch.save(decoder.state_dict(), 'decoder.pkl' )
         torch.save(encoder.state_dict(), 'encoder.pkl' )
+        with open('losses.txt', 'w') as f:
+            print >>f, losses
 
 
 
